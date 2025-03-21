@@ -1,0 +1,9 @@
+api/.env
+api/env
+api/__pycache__
+api/*.crt
+api/*.key
+sensors/.env
+sensors/env
+sensors/__pycache__
+influx
