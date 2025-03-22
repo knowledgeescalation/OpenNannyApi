@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, status, WebSocket
+from fastapi import Depends, FastAPI, HTTPException, status, WebSocket, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 import jwt
@@ -182,7 +182,8 @@ class CustomAudioStreamTrack(MediaStreamTrack):
             try:
                 self.audio_queue.put_nowait(in_data)
             except asyncio.QueueFull:
-                print("Warning: Audio queue full, dropping frame")
+                pass
+                #print("Warning: Audio queue full, dropping frame")
         
         return (None, pyaudio.paContinue)
 
@@ -536,7 +537,27 @@ async def music_post(item: MusicItem):#, current_user: Annotated[User, Depends(g
     return {"status": "OK"}
 
 @app.websocket("/webrtc")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, authorization: str = Header(None)):
+
+    if not authorization or not authorization.startswith("Bearer "):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+   
+    token = authorization.split("Bearer ")[1]
+
+    print("token:", token)
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+    except Exception as e:
+        print('Exception:', e)
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     await webrtc_server.connect(websocket)
     pc = RTCPeerConnection()
     video_sender = CustomVideoStreamTrack(picam2)
@@ -546,6 +567,7 @@ async def websocket_endpoint(websocket: WebSocket):
     pc.addTrack(audio_sender)
 
     try:
+
         @pc.on("datachannel")
         def on_datachannel(channel):
             print(f"Data channel established: {channel.label}")
