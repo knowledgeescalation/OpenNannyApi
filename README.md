@@ -46,7 +46,7 @@
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/OpenNannyApi.git
+git clone https://github.com/knowledgeescalation/OpenNannyApi.git
 cd OpenNannyApi
 ```
 
